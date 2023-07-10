@@ -1,5 +1,7 @@
 import { type ClassValue, clsx } from 'clsx'
+import { parseAcceptLanguage } from 'intl-parse-accept-language'
 import { twMerge } from 'tailwind-merge'
+import { getHints } from './client-hints.tsx'
 
 export function getUserImgSrc(imageId?: string | null) {
 	return imageId ? `/resources/file/${imageId}` : `/img/user.png`
@@ -110,4 +112,29 @@ export function invariantResponse(
 			...responseInit,
 		})
 	}
+}
+
+export function getDateTimeFormat(
+	request: Request,
+	options?: Intl.DateTimeFormatOptions,
+) {
+	const locales = parseAcceptLanguage(request.headers.get('accept-language'), {
+		validate: Intl.DateTimeFormat.supportedLocalesOf,
+	})
+	const locale = locales[0] ?? 'en-US'
+
+	// change your default options here
+	const defaultOptions: Intl.DateTimeFormatOptions = {
+		year: 'numeric',
+		month: 'numeric',
+		day: 'numeric',
+		hour: 'numeric',
+		minute: 'numeric',
+	}
+	options = {
+		...defaultOptions,
+		...options,
+		timeZone: options?.timeZone ?? getHints(request).timeZone ?? 'UTC',
+	}
+	return new Intl.DateTimeFormat(locale, options)
 }
