@@ -8,6 +8,7 @@ import { getUserId } from '~/utils/auth.server.ts'
 import { prisma } from '~/utils/db.server.ts'
 import { formatDistanceToNow } from 'date-fns'
 import { floatingToolbarClassName } from '~/components/floating-toolbar.tsx'
+import { getDateTimeFormat } from '~/utils/misc.ts'
 
 export async function loader({ request, params }: DataFunctionArgs) {
 	const userId = await getUserId(request)
@@ -31,7 +32,7 @@ export async function loader({ request, params }: DataFunctionArgs) {
 	return json({
 		note,
 		timeAgo,
-		dateDisplay: date.toLocaleDateString(),
+		dateDisplay: getDateTimeFormat(request).format(date),
 		isOwner: userId === note.ownerId,
 	})
 }
@@ -42,7 +43,12 @@ export default function NoteRoute() {
 	return (
 		<>
 			<div className="absolute inset-0 flex flex-col px-10">
-				<h2 className="mb-2 pt-12 text-h2 lg:mb-6">{data.note.title}</h2>
+				<div className="mb-2 flex items-baseline justify-between pt-12 lg:mb-6">
+					<h2 className="text-h2">{data.note.title}</h2>
+					<div className="inline-flex items-center gap-2">
+						<Icon name="calendar" /> {data.dateDisplay}
+					</div>
+				</div>
 				<div className={`${data.isOwner ? 'pb-24' : 'pb-12'} overflow-y-auto`}>
 					<p className="whitespace-break-spaces text-sm md:text-lg">
 						{data.note.content}
