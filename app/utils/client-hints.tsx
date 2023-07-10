@@ -15,6 +15,14 @@ export const clientHints = {
 			return value === 'dark' ? 'dark' : 'light'
 		},
 	},
+	timeZone: {
+		cookieName: 'CH-time-zone',
+		getValueCode: `Intl.DateTimeFormat().resolvedOptions().timeZone`,
+		fallback: 'UTC',
+		transform(value: string | null) {
+			return value ?? 'UTC'
+		},
+	},
 	// add other hints here
 }
 
