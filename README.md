@@ -1,54 +1,72 @@
-<div align="center">
-  <h1 align="center"><a href="https://www.epicweb.dev/epic-stack">The Epic Stack 🚀</a></h1>
-  <strong align="center">
-    Ditch analysis paralysis and start shipping Epic Web apps.
-  </strong>
-  <p>
-    This is an opinionated project starter and reference that allows teams to
-    ship their ideas to production faster and on a more stable foundation based
-    on the experience of <a href="https://kentcdodds.com">Kent C. Dodds</a> and
-    <a href="https://github.com/epicweb-dev/epic-stack/graphs/contributors">contributors</a>.
-  </p>
-</div>
+# Epic Stack Time Zone Client Hint Example
 
-```sh
-npx create-remix@latest --typescript --install --template epicweb-dev/epic-stack
+This example adds a new
+[client hint](https://github.com/epicweb-dev/epic-stack/blob/main/docs/client-hints.md)
+to get the user's time zone. This is helpful when rendering dates and times on
+the server. By returning the correct local time, we eliminate the "flash of
+incorrect content" when the server and local times are not the same.
+
+## Changes
+
+_app/utils/client-hints.tsx_
+
+```ts
+export const clientHints = {
+	// ...
+	timeZone: {
+		cookieName: 'CH-time-zone',
+		getValueCode: `Intl.DateTimeFormat().resolvedOptions().timeZone`,
+		fallback: 'UTC',
+		transform(value: string | null) {
+			return value ?? 'UTC'
+		},
+	},
+	// add other hints here
+}
 ```
 
-[![The Epic Stack](https://github-production-user-asset-6210df.s3.amazonaws.com/1500684/246885449-1b00286c-aa3d-44b2-9ef2-04f694eb3592.png)](https://www.epicweb.dev/epic-stack)
+_app/utils/misc.tsx_
 
-[The Epic Stack](https://www.epicweb.dev/epic-stack)
+```ts
+export function getDateTimeFormat(
+	request: Request,
+	options?: Intl.DateTimeFormatOptions,
+) {
+	const locales = parseAcceptLanguage(request.headers.get('accept-language'), {
+		validate: Intl.DateTimeFormat.supportedLocalesOf,
+	})
+	const locale = locales[0] ?? 'en-US'
 
-<hr />
+	// change your default options here
+	const defaultOptions: Intl.DateTimeFormatOptions = {
+		year: 'numeric',
+		month: 'numeric',
+		day: 'numeric',
+		hour: 'numeric',
+		minute: 'numeric',
+	}
+	options = {
+		...defaultOptions,
+		...options,
+		timeZone: options?.timeZone ?? getHints(request).timeZone ?? 'UTC',
+	}
+	return new Intl.DateTimeFormat(locale, options)
+}
+```
 
-## Watch Kent's Introduction to The Epic Stack
+_root.tsx_
 
-[![screenshot of a YouTube video](https://github-production-user-asset-6210df.s3.amazonaws.com/1500684/242088051-6beafa78-41c6-47e1-b999-08d3d3e5cb57.png)](https://www.youtube.com/watch?v=yMK5SVRASxM)
+```ts
+// default options to use timeZone client hint
+const localDateTimeFormat = getDateTimeFormat(request)
+const serverDateTimeFormat = getDateTimeFormat(request, {
+	timeZone: 'UTC', // override timezone here
+	month: 'short', // override month style, etc.
+})
+const now = new Date()
 
-["The Epic Stack" by Kent C. Dodds at #RemixConf 2023 💿](https://www.youtube.com/watch?v=yMK5SVRASxM)
-
-## Docs
-
-[Read the docs](https://github.com/epicweb-dev/epic-stack/blob/main/docs)
-(please 🙏).
-
-## Support
-
-- 🆘 Join the
-  [discussion on GitHub](https://github.com/epicweb-dev/epic-stack/discussions)
-  and the [KCD Community on Discord](https://kcd.im/discord).
-- 💡 Create an
-  [idea discussion](https://github.com/epicweb-dev/epic-stack/discussions/new?category=ideas)
-  for suggestions.
-- 🐛 Open a [GitHub issue](https://github.com/epicweb-dev/epic-stack/issues) to
-  report a bug.
-
-## Branding
-
-Want to talk about the Epic Stack in a blog post or talk? Great! Here are some
-assets you can use in your material:
-[EpicWeb.dev/brand](https://epicweb.dev/brand)
-
-## Thanks
-
-You rock 🪨
+return json({
+	serverTime: serverDateTimeFormat.format(now),
+	localTime: localDateTimeFormat.format(now),
+})
+```
