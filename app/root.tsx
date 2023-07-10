@@ -40,7 +40,12 @@ import { ClientHintCheck, getHints } from './utils/client-hints.tsx'
 import { prisma } from './utils/db.server.ts'
 import { getEnv } from './utils/env.server.ts'
 import { getFlashSession } from './utils/flash-session.server.ts'
-import { combineHeaders, getDomainUrl, getUserImgSrc } from './utils/misc.ts'
+import {
+	combineHeaders,
+	getDateTimeFormat,
+	getDomainUrl,
+	getUserImgSrc,
+} from './utils/misc.ts'
 import { useNonce } from './utils/nonce-provider.ts'
 import { makeTimings, time } from './utils/timing.server.ts'
 import { useToast } from './utils/useToast.tsx'
@@ -105,18 +110,27 @@ export async function loader({ request }: DataFunctionArgs) {
 		await authenticator.logout(request, { redirectTo: '/' })
 	}
 	const { flash, headers: flashHeaders } = await getFlashSession(request)
-
+	const hints = getHints(request)
+	// default options to use timeZone client hint
+	const localDateTimeFormat = getDateTimeFormat(request)
+	const serverDateTimeFormat = getDateTimeFormat(request, {
+		timeZone: 'UTC', // override timezone here
+		month: 'short', // override month style, etc.
+	})
+	const now = new Date()
 	return json(
 		{
 			user,
 			requestInfo: {
-				hints: getHints(request),
+				hints,
 				origin: getDomainUrl(request),
 				path: new URL(request.url).pathname,
 				userPrefs: {
 					theme: getTheme(request),
 				},
 			},
+			serverTime: serverDateTimeFormat.format(now),
+			localTime: localDateTimeFormat.format(now),
 			ENV: getEnv(),
 			flash,
 		},
@@ -160,6 +174,8 @@ function App() {
 								<div className="font-light">epic</div>
 								<div className="font-bold">notes</div>
 							</Link>
+							<div>Server: {data.serverTime}</div>
+							<div>Local: {data.localTime}</div>
 							<div className="flex items-center gap-10">
 								{user ? (
 									<UserDropdown />
